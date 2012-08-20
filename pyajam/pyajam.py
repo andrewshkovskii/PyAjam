@@ -63,10 +63,12 @@ class Pyajam:
     self._version_    = None
     self._waitevt__run = False
 
-  def _query(self, mode, action, args={}):
+  def _query(self, mode, action, args = None):
     """Query Asterisk AJAM service.
 
     """
+    if args is None:
+        args = {}
     qargs = '&'.join(map(lambda x: "%s=%s" % (x, urllib2.quote(args[x])), args))
     if len(qargs) > 0:
       qargs = '&' + qargs
@@ -185,7 +187,7 @@ class Pyajam:
 
     self._version_ = info['Server'].split('/')[1][:3]
 #   print 'version=', self._version_
-    if self._version_ not in ['1.4', '1.6']:
+    if self._version_ not in ('1.4', '1.6', '1.8'):
       logging.error("login:: Unmanaged %s asterisk version" % self._version_)
       return 'False'
     
@@ -304,7 +306,7 @@ class Pyajam:
 
     """
     mode = 'rawman'
-    if self._version_ == '1.6':
+    if self._version_ in ('1.6', '1.8'):
       mode = 'mxml'
     (info, data) = self._query(mode, 'iaxpeers')
 
@@ -334,7 +336,7 @@ class Pyajam:
 
         return row
 
-    if self._version_ == '1.6':
+    if self._version_ in ('1.6', '1.8'):
       data = self._unify_xml(data, _normalize)
     else:
       data = self._unify_raw(data, 
@@ -408,7 +410,7 @@ class Pyajam:
          u'state'           : u'Unregistered',
          u'username'        : u'1234'}]
     """
-    if self._version_ == '1.6':
+    if self._version_ in ('1.6', '1.8'):
       def _normalize(row):
         if row['event'] != 'RegistryEntry':
           return None
@@ -489,7 +491,7 @@ class Pyajam:
        'vm extension' : 'asterisk'}
 
     """
-    if self._version_ == '1.6':
+    if self._version_ in ('1.6', '1.8'):
       (info, data) = self._query('mxml', 'sipshowpeer', {'peer': peername})
       if not info:
         return False
