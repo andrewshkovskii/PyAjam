@@ -193,6 +193,11 @@ class Pyajam:
     
     return True
 
+  def logoff(self):
+      self._query('manager', 'logoff')
+      self._version_ = None
+      self._sessionid_ = ''
+
   def version(self):
     """Return Asterisk version of server you are connected to.
      Values are **None** (not connected), **1.4** or **1.6**.
