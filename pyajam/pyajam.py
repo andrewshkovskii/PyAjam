@@ -33,7 +33,7 @@ if not hasattr(urllib2, 'quote'):
   urllib2.quote = urllib.quote
 
 
-class Pyajam:
+class Pyajam(object):
 
   def __init__(self, server='localhost', port=8088, path='/asterisk', 
                username='admin', password='admin', autoconnect=True, 
