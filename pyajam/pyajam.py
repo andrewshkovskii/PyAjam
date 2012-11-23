@@ -187,9 +187,9 @@ class Pyajam(object):
 
     self._version_ = info['Server'].split('/')[1][:3]
 #   print 'version=', self._version_
-    if self._version_ not in ('1.4', '1.6', '1.8'):
+    if self._version_ not in ('1.4', '1.6', '1.8', 'SVN'):
       logging.error("login:: Unmanaged %s asterisk version" % self._version_)
-      return 'False'
+      return False
     
     return True
 
@@ -311,7 +311,7 @@ class Pyajam(object):
 
     """
     mode = 'rawman'
-    if self._version_ in ('1.6', '1.8'):
+    if self._version_ in ('1.6', '1.8', 'SVN'):
       mode = 'mxml'
     (info, data) = self._query(mode, 'iaxpeers')
 
@@ -341,7 +341,7 @@ class Pyajam(object):
 
         return row
 
-    if self._version_ in ('1.6', '1.8'):
+    if self._version_ in ('1.6', '1.8', 'SVN'):
       data = self._unify_xml(data, _normalize)
     else:
       data = self._unify_raw(data, 
@@ -415,7 +415,7 @@ class Pyajam(object):
          u'state'           : u'Unregistered',
          u'username'        : u'1234'}]
     """
-    if self._version_ in ('1.6', '1.8'):
+    if self._version_ in ('1.6', '1.8', 'SVN'):
       def _normalize(row):
         if row['event'] != 'RegistryEntry':
           return None
@@ -496,7 +496,7 @@ class Pyajam(object):
        'vm extension' : 'asterisk'}
 
     """
-    if self._version_ in ('1.6', '1.8'):
+    if self._version_ in ('1.6', '1.8', 'SVN'):
       (info, data) = self._query('mxml', 'sipshowpeer', {'peer': peername})
       if not info:
         return False
