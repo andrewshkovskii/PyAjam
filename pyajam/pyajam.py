@@ -118,14 +118,17 @@ class Pyajam(object):
     self.connexion_status = 'CONNECTED'
     return (f.info(), data)
 
-  def _unify_xml(self, raw, normalizer=None, attribute='event'):
+  def _unify_xml(self, raw, normalizer=None, filter={'event': None}):
     """Convert Asterisk ajam XML message to python dictionary.
     """
     doc = ElementTree.fromstring(raw)
     datas = []
 
     for elem in doc.iter(tag='generic'):
-      if attribute in elem.keys():
+      for attr, value in filter.iteritems():
+        if attr not in elem.keys() or value is not None and elem.get(attr) != value:
+          continue
+
         # We have the good shape :-)
         attrs = {}
         for key in elem.keys():
@@ -185,9 +188,12 @@ class Pyajam(object):
       logging.error("login:: not logging to an asterisk server")
       return False
 
-    self._version_ = info['Server'].split('/')[1][:3]
-#   print 'version=', self._version_
-    if self._version_ not in ('1.4', '1.6', '1.8'):
+    version = info['Server'].split('/')[1].split('.',2)
+    self._version_ = version[0]
+    if self._version_ < '10':
+        self._version_ += '.' + version [1]
+    #print 'version=', self._version_, info
+    if self._version_ not in ['1.4', '1.6', '1.8', '10', '11']:
       logging.error("login:: Unmanaged %s asterisk version" % self._version_)
       return 'False'
     
@@ -310,8 +316,11 @@ class Pyajam(object):
 
 
     """
+    if self.connexion_status != 'CONNECTED' and self.autoconnect and self.login():
+      self.connexion_status = 'CONNECTED'
+
     mode = 'rawman'
-    if self._version_ in ('1.6', '1.8'):
+    if self._version_ >= '1.6':
       mode = 'mxml'
     (info, data) = self._query(mode, 'iaxpeers')
 
@@ -322,7 +331,7 @@ class Pyajam(object):
       def _normalize(row):
         row[u'channeltype'] = u'IAX2'
     
-        if row['dynamic'] == 'D':
+        if row['dynamic'] in ('yes', 'D'):
           row['dynamic'] = u'yes'
         else:
           row['dynamic'] = u'no'
@@ -341,13 +350,14 @@ class Pyajam(object):
 
         return row
 
-    if self._version_ in ('1.6', '1.8'):
-      data = self._unify_xml(data, _normalize)
-    else:
-      data = self._unify_raw(data, 
-        '^(?P<objectname>[^\s]+)\s+(?P<ipaddress>[0-9.]*)\s+\\((?P<dynamic>S|D)\\)\s+([0-9.]+)\s+(?P<ipport>\d+)\s+(?P<status>.*?)\s+$',
-        _normalize
-      )
+      if self._version_ >= '1.6':
+        data = self._unify_xml(data, _normalize, filter={'event': 'PeerEntry'})
+      else:
+        data = self._unify_raw(data,
+          '^(?P<objectname>[^\s]+)\s+(?P<ipaddress>[0-9.]*)\s+\\((?P<dynamic>S|D)\\)\s+([0-9.]+)\s+(?P<ipport>\d+)\s+(?P<status>.*?)\s+$',
+          _normalize
+        )
+
     return data
 
   def peers(self):
@@ -415,17 +425,15 @@ class Pyajam(object):
          u'state'           : u'Unregistered',
          u'username'        : u'1234'}]
     """
-    if self._version_ in ('1.6', '1.8'):
-      def _normalize(row):
-        if row['event'] != 'RegistryEntry':
-          return None
-        return row
+    if self.connexion_status != 'CONNECTED' and self.autoconnect and self.login():
+      self.connexion_status = 'CONNECTED'
 
+    if self._version_ >= '1.6':
       (info, data) = self._query('mxml', 'sipshowregistry')
       if not info:
         return False
 
-      data = self._unify_xml(data, _normalize)
+      data = self._unify_xml(data, filter={'event': 'RegistryEntry'})
     else:
       data = self.command('sip show registry',
         '^(?P<host>[^\s]+):(?P<port>[0-9]+)\s+(?P<username>[^\s]+)\s+(?P<refresh>[0-9.]+)\s+(?P<state>[^\s]+).*$'
@@ -496,12 +504,12 @@ class Pyajam(object):
        'vm extension' : 'asterisk'}
 
     """
-    if self._version_ in ('1.6', '1.8'):
+    if self._version_ == '1.6':
       (info, data) = self._query('mxml', 'sipshowpeer', {'peer': peername})
       if not info:
         return False
 
-      data = self._unify_xml(data, attribute='response')[0]
+      data = self._unify_xml(data, filter={'response': None})[0]
     else:
       def _normalizer(row):
         key = row['key'].strip()
